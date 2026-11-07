@@ -118,5 +118,43 @@ const albumRestaurants = [
         partner: "太貴，不要點"
       }
     }]
+  },
+  {
+    id: "woosa-q-square",
+    name: "woosa洋食パンケーキ 屋莎洋食鬆餅屋 台北京站店",
+    englishName: "",
+    city: "臺北市",
+    district: "大同區",
+    address: "103臺北市大同區建明里承德路一段1號2樓",
+    dishes: [{
+      id: "chocolate-ice-cream-pancake",
+      name: "松露巧克力冰淇淋鬆餅",
+      categories: ["甜點", "鬆餅"],
+      price: 370,
+      photo: "assets/woosa-q-square-chocolate-pancake.jpg",
+      alt: "鬆餅淋著巧克力醬，後方搭配一球冰淇淋",
+      visitId: "woosa-q-square-chocolate-ice-cream-pancake-01",
+      score: 4,
+      reviews: {me: "", partner: ""}
+    }]
+  },
+  {
+    id: "dutch-pancakes-nanxi",
+    name: "荷蘭小鬆餅南西中山店",
+    englishName: "",
+    city: "臺北市",
+    district: "大同區",
+    address: "103臺北市大同區建泰里南京西路64巷9弄19號",
+    dishes: [{
+      id: "strawberry-cheese",
+      name: "草莓乳酪起司",
+      categories: ["甜點", "鬆餅"],
+      price: 210,
+      photo: "assets/dutch-pancakes-nanxi-strawberry-cheese.jpg",
+      alt: "小鬆餅上鋪著切塊草莓與乳酪，盤邊撒有糖粉",
+      visitId: "dutch-pancakes-nanxi-strawberry-cheese-01",
+      score: 4,
+      reviews: {me: "", partner: ""}
+    }]
   }
 ];
