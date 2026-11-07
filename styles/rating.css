@@ -1,0 +1,44 @@
+#dish-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 10px;
+  margin-bottom: 10px;
+  color: #654330;
+}
+.rating-caption, .rating-feedback {
+  font: 500 0.8rem/1.6 "PingFang TC", sans-serif;
+}
+.rating-caption { flex-basis: 100%; }
+.rating-feedback { color: #62554a; }
+.rating-number { font: 600 0.85rem/1.2 Georgia, serif; }
+.rating-options { display: inline-flex; align-items: center; }
+.rating-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  color: #9a561e;
+  font: 30px/1 system-ui, sans-serif;
+}
+.rating-glyph { position: relative; }
+.rating-glyph::after {
+  content: "★";
+  position: absolute;
+  inset: 0;
+  text-align: center;
+  clip-path: inset(0 calc(100% - var(--star-fill, 0%)) 0 0);
+}
+.rating-options input {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 50%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.rating-options input:last-child { left: 50%; }
+.rating-cell:has(input:focus-visible) .rating-glyph { outline: 2px solid #78482a; outline-offset: 2px; }

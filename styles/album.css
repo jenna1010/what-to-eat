@@ -1,0 +1,136 @@
+:root {
+  color-scheme: light;
+  --paper: #f5efdf;
+  --ink: #293c32;
+  --muted: #625e51;
+  --accent: #8b4b35;
+  --line: #cabfa9;
+  --serif: "Baskervville", "Iowan Old Style", "Songti TC", "Noto Serif TC", Georgia, serif;
+  --sans: "DM Sans", system-ui, "PingFang TC", "Microsoft JhengHei", sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 12% 25%, #f9f6ed, transparent 65%), var(--paper);
+  color: var(--ink);
+  font: 1rem/1.7 var(--sans);
+}
+.masthead, main { width: min(100% - 56px, 1110px); margin-inline: auto; }
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 24px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+.album-title { font: 700 1.45rem/1.3 var(--serif); }
+.album-subtitle { color: var(--muted); font-size: .83rem; letter-spacing: .1em; }
+.detail-nav { margin-top: 1.15rem; }
+.detail-nav a, .dish-list a { color: var(--accent); text-underline-offset: 4px; font-size: .9rem; }
+.dish-list { margin-top: 1rem; }
+.dish-list a { display: inline-block; margin-inline-end: 1rem; }
+.dish-list [aria-current="page"] { font-weight: 700; }
+.spread {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas: "rating rating" "photo restaurant" "photo notes";
+  column-gap: clamp(42px, 7vw, 100px);
+  align-content: start;
+  align-items: start;
+  margin: clamp(24px, 3vw, 40px) 0;
+}
+.rating-row { grid-area: rating; margin-bottom: 26px; }
+.restaurant { grid-area: restaurant; }
+.location { margin: 0 0 14px; color: var(--accent); font-size: .84rem; font-weight: 650; letter-spacing: .09em; }
+.location span { margin-inline: 7px; color: var(--line); }
+h1 { margin: 0; font: 700 clamp(2.2rem, 4.3vw, 3.65rem)/1.2 var(--serif); }
+h1 span { display: block; margin-bottom: 10px; font-size: .49em; font-weight: 500; letter-spacing: .055em; }
+.address { margin: 16px 0 0; font-size: .88rem; color: var(--muted); }
+.instant-print {
+  grid-area: photo;
+  position: relative;
+  margin: 4px 0 0;
+  padding: clamp(12px, 1.6vw, 22px);
+  background: #fffdf7;
+  box-shadow: 0 14px 32px -16px #53482e70, 0 1px 4px #5e4f331f;
+  transform: rotate(-1.4deg);
+}
+.instant-print::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  width: 25%;
+  height: 20px;
+  top: -9px;
+  left: 38%;
+  transform: rotate(3deg);
+  background: repeating-linear-gradient(90deg, #d2bb8780 0 3px, #d4c19380 3px 5px);
+  pointer-events: none;
+}
+.photo-link { display: block; }
+.photo-link:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.photo-link img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; object-position: center 86%; }
+figcaption { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; padding: 20px 4px 6px; }
+figcaption strong { font: 700 clamp(1.1rem, 2vw, 1.65rem)/1.4 var(--serif); }
+.price { flex: none; font: 500 1rem/1.4 var(--serif); color: var(--accent); }
+.notes { grid-area: notes; align-self: start; margin-top: 26px; }
+h2 { font: 700 1.2rem/1.5 var(--serif); margin: 0; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.review { padding: 12px 0; }
+.review + .review { border-top: 1px dashed var(--line); }
+h3 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 5px; color: var(--accent); font-size: .95rem; }
+.review p { margin: 0; line-height: 1.9; overflow-wrap: anywhere; white-space: pre-wrap; }
+.review button {
+  min-height: 40px;
+  padding: 5px 12px;
+  color: var(--accent);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: transparent;
+  font: 500 .85rem/1.45 var(--sans);
+  cursor: pointer;
+}
+.review .edit-review { margin-inline-start: auto; text-decoration: underline; text-underline-offset: 3px; border: 0; }
+.review-form textarea {
+  width: 100%; resize: vertical; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 4px;
+  background: #fffdf7; color: var(--ink); font: inherit;
+}
+.review-actions { display: flex; gap: 8px; margin-top: 6px; }
+.review-actions button[type="submit"] { background: var(--ink); color: #fffdf7; border-color: var(--ink); }
+.review :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.review-status { font-size: .8rem; color: var(--muted); }
+@media (max-width: 700px) {
+  .masthead, main { width: min(100% - 36px, 500px); }
+  .masthead { padding-top: 17px; }
+  .album-title { font-size: 1.15rem; }
+  .album-subtitle { font-size: .76rem; letter-spacing: .02em; }
+  .spread { grid-template-columns: minmax(0, 1fr); grid-template-areas: "rating" "restaurant" "photo" "notes"; margin: 24px 0 30px; }
+  .rating-row { margin-bottom: 17px; }
+  .location { margin-bottom: 8px; }
+  h1 { font-size: 2.3rem; }
+  h1 span { margin-bottom: 4px; }
+  .address { margin-top: 9px; }
+  .instant-print { margin: 28px 4px 0; }
+  figcaption { padding: 14px 1px 5px; }
+  .notes { margin-top: 27px; }
+}
+
+.masthead { flex-wrap: wrap; align-items: center; }
+.album-actions { margin-inline-start: auto; display: flex; align-items: center; gap: 16px; }
+.album-actions a, .visit-history a { color: var(--accent); text-underline-offset: 4px; }
+.album-actions a { font-size: .88rem; }
+.album-actions .new-meal-link { padding: 8px 14px; border-radius: 5px; background: var(--ink); color: #fffdf7; text-decoration: none; }
+#album-loading { max-width: 65ch; margin: 2rem auto; padding: 0 20px; }
+#album-loading button { font: inherit; cursor: pointer; }
+.visit-meta { margin: 8px 4px 0; color: var(--muted); font-size: .87rem; }
+.visit-history { margin: 12px 0 4px; font-size: .92rem; color: var(--muted); }
+.visit-history summary { cursor: pointer; padding: 8px 0; color: var(--ink); }
+.visit-history ul { padding-inline-start: 20px; margin: 0 0 10px; }
+.visit-history a { display: inline-block; padding: 6px 0; }
+.visit-history [aria-current] { font-weight: 700; }
+@media (max-width: 560px) {
+  .masthead { gap: 6px 12px; }
+  .masthead .album-subtitle { display: none; }
+  .album-actions { gap: 12px; }
+}

@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5efdf">
+  <title>今天吃什麼？｜雙人拍立得美食相簿</title>
+  <link rel="stylesheet" href="styles/album.css">
+  <link rel="stylesheet" href="styles/rating.css">
+  <link rel="stylesheet" href="styles/home.css">
+  <script src="src/album-data.js" defer></script>
+  <script src="src/restaurant-detail.js" defer></script>
+  <script src="src/album-home.js" defer></script>
+  <script src="src/dish-rating.js" defer></script>
+  <script src="src/review-editor.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <span class="album-title">今天吃什麼？</span>
+    <span class="album-subtitle">雙人拍立得美食相簿</span>
+    <nav class="album-actions" aria-label="相簿管理">
+      <a id="owner-login" target="_top" hidden>主人登入</a>
+      <a class="new-meal-link" href="new-meal.html">新增一餐</a>
+    </nav>
+  </header>
+  <noscript>請啟用 JavaScript 以瀏覽相簿及翻牌。</noscript>
+  <div id="album-loading" role="status">正在打開相簿…</div>
+  <main id="album-home" hidden>
+    <section class="draw-spread" aria-labelledby="draw-title">
+      <div class="draw-controls">
+        <h1 id="draw-title">從相簿裡，<br>翻出今天這餐。</h1>
+        <div class="meal-filters">
+          <label>縣市<select id="city-filter"></select></label>
+          <label>行政區<select id="district-filter"></select></label>
+          <label>餐點類型<select id="category-filter"></select></label>
+        </div>
+        <div class="draw-actions">
+          <button type="button" id="draw-button">今天吃什麼？</button>
+          <button type="button" id="clear-filters" hidden>清除篩選</button>
+        </div>
+        <p id="draw-hint" role="status"></p>
+      </div>
+      <div class="print-stage">
+        <div id="print-stack" aria-hidden="true"></div>
+        <article id="draw-result" class="result-print" aria-label="翻牌結果" hidden>
+          <img id="result-photo" alt="">
+          <div class="print-caption">
+            <p id="result-location"></p>
+            <h2 id="result-name"></h2>
+            <p id="result-dish"></p>
+            <a id="result-link">看這家店 <span aria-hidden="true">↗</span></a>
+          </div>
+        </article>
+      </div>
+    </section>
+    <section class="album-entries" aria-labelledby="entries-title">
+      <div class="entries-header"><h2 id="entries-title">我們的店家</h2><span id="match-count"></span></div>
+      <ul id="restaurant-list"></ul>
+    </section>
+  </main>
+  <template id="restaurant-detail">
+    <main id="album-detail">
+      <nav class="detail-nav" aria-label="相簿導覽"><a href="index.html">← 回相簿抽店家</a></nav>
+      <article class="spread" aria-labelledby="restaurant">
+        <div class="rating-row"><div id="dish-rating"></div></div>
+        <header class="restaurant">
+          <p class="location"></p>
+          <h1 id="restaurant"><span lang="en"></span></h1>
+          <p class="address"></p>
+          <nav class="dish-list" aria-label="這家店的餐點" hidden></nav>
+        </header>
+        <figure class="instant-print">
+          <a class="photo-link" aria-label="檢視完整餐點照"><img fetchpriority="high" alt=""></a>
+          <figcaption><strong></strong><span class="price"></span></figcaption>
+          <p class="visit-meta" hidden></p>
+        </figure>
+        <section class="notes" aria-labelledby="notes-title">
+          <h2 id="notes-title">我們的餐桌筆記</h2>
+          <details class="visit-history" hidden>
+            <summary>歷次造訪</summary>
+            <ul></ul>
+          </details>
+          <section class="review" data-author="me"><h3>我</h3><p></p></section>
+          <section class="review" data-author="partner"><h3>男友</h3><p></p></section>
+        </section>
+      </article>
+    </main>
+  </template>
+  <template id="review-form">
+    <form class="review-form" hidden>
+      <textarea rows="4"></textarea>
+      <div class="review-actions">
+        <button type="submit">儲存</button>
+        <button type="button" class="cancel">取消</button>
+      </div>
+    </form>
+  </template>
+</body>
+</html>
