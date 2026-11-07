@@ -5,6 +5,7 @@ function showAlbumHome(albumRestaurants, albumCategories) {
   const drawButton = document.querySelector("#draw-button");
   const clearButton = document.querySelector("#clear-filters");
   const hint = document.querySelector("#draw-hint");
+  const stack = document.querySelector("#print-stack");
   const result = document.querySelector("#draw-result");
   const resultPhoto = document.querySelector("#result-photo");
   const gallery = document.querySelector("#dish-gallery");
@@ -65,6 +66,21 @@ function showAlbumHome(albumRestaurants, albumCategories) {
     document.querySelector("#match-count").textContent = cards.length + " 道餐點 · " + candidates.length + " 家店";
   }
 
+  function showStack() {
+    stack.replaceChildren();
+    stack.hidden = !candidates.length;
+    result.hidden = true;
+    for (const {shop, dishes} of candidates.slice(0, 2)) {
+      const print = document.createElement("span");
+      print.className = "cover-print";
+      const photo = document.createElement("img");
+      photo.src = dishes[0].photo;
+      photo.alt = "";
+      print.append(photo, makeText("span", "cover-caption", shop.name));
+      stack.append(print);
+    }
+  }
+
   function pick(items) {
     return items[Math.floor(Math.random() * items.length)];
   }
@@ -84,17 +100,20 @@ function showAlbumHome(albumRestaurants, albumCategories) {
     document.querySelector("#result-name").textContent = shop.name;
     document.querySelector("#result-dish").textContent = dish.name;
     document.querySelector("#result-link").href = detailLink(shop, dish);
+    const fromStack = document.activeElement === stack;
+    stack.hidden = true;
     result.hidden = false;
     drawButton.textContent = "再翻一張";
     drawButton.hidden = candidates.length < 2;
+    if (fromStack && !drawButton.hidden) drawButton.focus({preventScroll: true});
     hint.textContent = candidates.length === 1
       ? "只有這一家符合條件。放寬篩選可以抽到更多店。"
       : "翻到了" + shop.name + "！";
     if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
       result.getAnimations().forEach(animation => animation.cancel());
       result.animate([
-        {transform: "perspective(850px) rotateY(-75deg) rotate(0deg)", opacity: 0.45},
-        {transform: "perspective(850px) rotateY(0) rotate(0deg)", opacity: 1}
+        {transform: "perspective(850px) rotateY(-75deg) rotate(-2deg)", opacity: 0.45},
+        {transform: "perspective(850px) rotateY(0) rotate(-2deg)", opacity: 1}
       ], {duration: 330, easing: "ease-out"});
     }
   }
@@ -112,7 +131,7 @@ function showAlbumHome(albumRestaurants, albumCategories) {
     clearButton.hidden = !(city.value || district.value || category.value);
     drawButton.hidden = candidates.length < 2;
     drawButton.textContent = "今天吃什麼？";
-    result.hidden = true;
+    showStack();
     if (candidates.length === 1) {
       draw();
     } else {
@@ -131,6 +150,7 @@ function showAlbumHome(albumRestaurants, albumCategories) {
   district.addEventListener("change", applyFilters);
   category.addEventListener("change", applyFilters);
   drawButton.addEventListener("click", draw);
+  stack.addEventListener("click", draw);
   clearButton.addEventListener("click", () => {
     city.value = "";
     district.value = "";
