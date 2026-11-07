@@ -26,41 +26,38 @@
   <noscript>請啟用 JavaScript 以瀏覽相簿及翻牌。</noscript>
   <div id="album-loading" role="status">正在打開相簿…</div>
   <main id="album-home" hidden>
-    <section class="draw-spread" aria-labelledby="draw-title">
-      <div class="draw-controls">
-        <h1 id="draw-title">從相簿裡，<br>翻出今天這餐。</h1>
+    <section class="album-entries" aria-labelledby="gallery-title">
+      <header class="gallery-heading">
+        <h1 id="gallery-title">餐桌相簿</h1>
+        <span id="match-count" role="status"></span>
+      </header>
+      <div class="gallery-tools">
         <div class="meal-filters">
           <label>縣市<select id="city-filter"></select></label>
           <label>行政區<select id="district-filter"></select></label>
           <label>餐點類型<select id="category-filter"></select></label>
         </div>
         <div class="draw-actions">
-          <button type="button" id="draw-button">今天吃什麼？</button>
           <button type="button" id="clear-filters" hidden>清除篩選</button>
+          <button type="button" id="draw-button">今天吃什麼？</button>
         </div>
-        <p id="draw-hint" role="status"></p>
       </div>
-      <div class="print-stage">
-        <div id="print-stack" aria-hidden="true"></div>
-        <article id="draw-result" class="result-print" aria-label="翻牌結果" hidden>
-          <img id="result-photo" alt="">
-          <div class="print-caption">
-            <p id="result-location"></p>
-            <h2 id="result-name"></h2>
-            <p id="result-dish"></p>
-            <a id="result-link">看這家店 <span aria-hidden="true">↗</span></a>
-          </div>
-        </article>
-      </div>
-    </section>
-    <section class="album-entries" aria-labelledby="entries-title">
-      <div class="entries-header"><h2 id="entries-title">我們的店家</h2><span id="match-count"></span></div>
-      <ul id="restaurant-list"></ul>
+      <p id="draw-hint" role="status"></p>
+      <article id="draw-result" class="result-print" aria-label="翻牌結果" hidden>
+        <img id="result-photo" alt="">
+        <div class="print-caption">
+          <p id="result-location"></p>
+          <h2 id="result-name"></h2>
+          <p id="result-dish"></p>
+          <a id="result-link">看這家店 <span aria-hidden="true">↗</span></a>
+        </div>
+      </article>
+      <ul id="dish-gallery" aria-label="餐點照片"></ul>
     </section>
   </main>
   <template id="restaurant-detail">
     <main id="album-detail">
-      <nav class="detail-nav" aria-label="相簿導覽"><a href="index.html">← 回相簿抽店家</a></nav>
+      <nav class="detail-nav" aria-label="相簿導覽"><a href="index.html">← 回餐桌相簿</a></nav>
       <article class="spread" aria-labelledby="restaurant">
         <div class="rating-row"><div id="dish-rating"></div></div>
         <header class="restaurant">

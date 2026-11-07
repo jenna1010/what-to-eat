@@ -138,6 +138,9 @@ async function openAlbum() {
       document.querySelector("#album-home").hidden = false;
     }
     loading.hidden = true;
+    if (location.hash === "#notes-title") {
+      document.getElementById("notes-title")?.scrollIntoView({block: "start"});
+    }
   } catch {
     loading.replaceChildren("相簿暫時無法讀取。 ");
     const retry = document.createElement("button");
