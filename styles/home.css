@@ -74,6 +74,17 @@
 .print-caption p { margin: 0; }
 #result-location { color: var(--accent); font-size: .8rem; letter-spacing: .06em; }
 #result-name { margin: 4px 0; padding: 0; border: 0; font: 700 1.45rem/1.35 var(--serif); }
+#result-rating {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: .85rem;
+}
+#result-rating .rating-caption, #result-rating .rating-feedback { display: none; }
+#result-rating .rating-cell { width: 1.05em; height: 1.4em; font-size: 1.2rem; }
 #result-link { display: inline-block; margin-top: 6px; padding: 5px 0; color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
 .gallery-heading {
   display: flex;

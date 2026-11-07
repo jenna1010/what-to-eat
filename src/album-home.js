@@ -8,6 +8,7 @@ function showAlbumHome(albumRestaurants, albumCategories, canEdit) {
   const stack = document.querySelector("#print-stack");
   const result = document.querySelector("#draw-result");
   const resultPhoto = document.querySelector("#result-photo");
+  const resultRating = document.querySelector("#result-rating");
   const gallery = document.querySelector("#dish-gallery");
   let candidates = [];
   let previousId = null;
@@ -106,6 +107,12 @@ function showAlbumHome(albumRestaurants, albumCategories, canEdit) {
     document.querySelector("#result-location").textContent = shop.city + " · " + shop.district;
     document.querySelector("#result-name").textContent = shop.name;
     document.querySelector("#result-dish").textContent = dish.name;
+    resultRating.replaceChildren();
+    if (dish.score == null) {
+      resultRating.textContent = "尚未評分";
+    } else {
+      renderRating(resultRating, dish, false);
+    }
     document.querySelector("#result-link").href = detailLink(shop, dish);
     const fromStack = document.activeElement === stack;
     stack.hidden = true;
