@@ -19,13 +19,27 @@ function showRestaurantDetail(restaurants, canEdit) {
     return;
   }
 
-  const title = detail.querySelector("#restaurant");
-  if (shop.englishName) title.querySelector("span").textContent = shop.englishName;
-  else title.querySelector("span").remove();
-  title.append(shop.name);
-  document.title = shop.name + " · " + dish.name + "｜今天吃什麼？";
-  detail.querySelector(".location").textContent = [shop.city, shop.district].join("・") + " ／ " + (visit.categories ?? dish.categories).join("、");
-  detail.querySelector(".address").textContent = shop.address;
+  function showShopInfo() {
+    const title = detail.querySelector("#restaurant");
+    title.replaceChildren();
+    if (shop.englishName) {
+      const english = document.createElement("span");
+      english.lang = "en";
+      english.textContent = shop.englishName;
+      title.append(english);
+    }
+    title.append(shop.name);
+    document.title = shop.name + " · " + visit.name + "｜今天吃什麼？";
+    detail.querySelector(".location").textContent = [shop.city, shop.district].join("・") + " ／ " + (visit.categories ?? dish.categories).join("、");
+    detail.querySelector(".address").textContent = shop.address;
+  }
+  showShopInfo();
+  if (canEdit) {
+    const editLink = detail.querySelector(".record-edit-link");
+    editLink.href = "new-meal.html?" + new URLSearchParams({ edit: visit.visitId });
+    editLink.hidden = false;
+    enableShopEditing(detail, shop, showShopInfo);
+  }
   const selector = detail.querySelector(".dish-list");
   if (shop.dishes.length > 1) {
     for (const option of shop.dishes) {
@@ -64,7 +78,7 @@ function showRestaurantDetail(restaurants, canEdit) {
   image.src = visit.photo;
   image.alt = visit.alt || dish.name;
   detail.querySelector(".photo-link").href = visit.photo;
-  detail.querySelector("figcaption strong").textContent = dish.name;
+  detail.querySelector("figcaption strong").textContent = visit.name;
   detail.querySelector(".price").textContent = visit.price == null ? "" : "NT$ " + visit.price;
   const meta = detail.querySelector(".visit-meta");
   meta.textContent = [visit.date, visit.orderer && ("點餐者：" + visit.orderer)].filter(Boolean).join(" · ");
@@ -75,10 +89,62 @@ function showRestaurantDetail(restaurants, canEdit) {
   }
 }
 
-async function updateMealRecord(visitId, patch) {
+function enableShopEditing(detail, shop, showShopInfo) {
+  const editor = detail.querySelector(".shop-editor");
+  const form = editor.querySelector("form");
+  const inputs = [...form.querySelectorAll("input[name]")];
+  const status = detail.querySelector(".shop-edit-status");
+  const summary = editor.querySelector("summary");
+  editor.hidden = false;
+  function restoreFields() {
+    for (const input of inputs) input.value = shop[input.name] ?? "";
+  }
+  restoreFields();
+  form.querySelector(".cancel-shop").addEventListener("click", () => {
+    restoreFields();
+    editor.open = false;
+    status.textContent = "";
+    summary.focus();
+  });
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const patch = {};
+    for (const input of inputs) {
+      const value = input.value.trim();
+      if (value !== (shop[input.name] ?? "")) patch[input.name] = value;
+    }
+    if (!Object.keys(patch).length) {
+      editor.open = false;
+      summary.focus();
+      return;
+    }
+    const controls = [...form.elements];
+    controls.forEach(el => { el.disabled = true; });
+    status.textContent = "正在儲存…";
+    try {
+      await patchAlbumData("shops", shop.id, patch);
+      Object.assign(shop, patch);
+      showShopInfo();
+      restoreFields();
+      editor.open = false;
+      summary.focus();
+      status.textContent = "店家資料已儲存";
+    } catch (error) {
+      status.textContent = error.message;
+    } finally {
+      controls.forEach(el => { el.disabled = false; });
+    }
+  });
+}
+
+function updateMealRecord(visitId, patch) {
+  return patchAlbumData("records", visitId, patch);
+}
+
+async function patchAlbumData(collection, id, patch) {
   let response;
   try {
-    response = await fetch("/api/records/" + encodeURIComponent(visitId), {
+    response = await fetch("/api/" + collection + "/" + encodeURIComponent(id), {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch)
@@ -89,7 +155,10 @@ async function updateMealRecord(visitId, patch) {
   if (response.status === 401 || response.status === 403) {
     throw new Error("儲存需要主人登入。請在另一個分頁登入後再試一次。");
   }
-  if (!response.ok) throw new Error("無法儲存這筆修改，請再試一次。");
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || "無法儲存這筆修改，請再試一次。");
+  }
 }
 
 function readLocalPreview() {
@@ -108,7 +177,8 @@ function readLocalPreview() {
   } catch {
     // Local file access to browser storage depends on the browser.
   }
-  return { restaurants, categories: albumCategories, canEdit: false };
+  const used = restaurants.flatMap(shop => shop.dishes.flatMap(dish => dish.categories));
+  return { restaurants, categories: [...new Set([...albumCategories, ...used])], canEdit: false };
 }
 
 async function openAlbum() {
@@ -127,6 +197,8 @@ async function openAlbum() {
       const login = document.querySelector("#owner-login");
       const url = new URL(album.signInUrl, location.href);
       if (url.origin === location.origin) {
+        const returnTo = new URL(location.href);
+        url.searchParams.set("return_to", returnTo.pathname + returnTo.search + returnTo.hash);
         login.href = url.href;
         login.hidden = false;
       }
@@ -134,7 +206,7 @@ async function openAlbum() {
     if (new URLSearchParams(location.search).has("shop")) {
       showRestaurantDetail(album.restaurants, album.canEdit === true);
     } else {
-      showAlbumHome(album.restaurants, album.categories);
+      showAlbumHome(album.restaurants, album.categories, album.canEdit === true);
       document.querySelector("#album-home").hidden = false;
     }
     loading.hidden = true;

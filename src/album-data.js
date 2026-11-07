@@ -11,7 +11,7 @@ const albumRestaurants = [
     dishes: [{
       id: "chicken-sandwich",
       name: "雞肉蛋沙拉總匯",
-      categories: ["早午餐"],
+      categories: ["早午餐", "三明治"],
       price: 280,
       photo: "assets/john-doe-cafe-chicken-sandwich.jpg",
       alt: "雞肉蛋沙拉總匯、德式香腸、玉米筍與撒上爆米花的燕麥奶",
@@ -24,7 +24,7 @@ const albumRestaurants = [
     }, {
       id: "brown-sugar-cheesecake",
       name: "炙燒黑糖重乳酪",
-      categories: ["甜點"],
+      categories: ["甜點", "蛋糕"],
       price: 130,
       photo: "assets/john-doe-cafe-brown-sugar-cheesecake.jpg",
       alt: "前景的炙燒黑糖重乳酪，表面有炙燒過的糖粒",
@@ -37,7 +37,7 @@ const albumRestaurants = [
     }, {
       id: "basque-cheesecake",
       name: "原味巴斯克乳酪",
-      categories: ["甜點"],
+      categories: ["甜點", "蛋糕"],
       price: 130,
       photo: "assets/john-doe-cafe-basque-cheesecake.jpg?v=c0d35502ea61",
       alt: "黑盤上單獨一片原味巴斯克乳酪，表面平滑呈金棕色",
@@ -59,7 +59,7 @@ const albumRestaurants = [
     dishes: [{
       id: "vodka-rigatoni",
       name: "伏特加粉紅醬水管麵",
-      categories: ["飯麵"],
+      categories: ["飯麵", "義大利麵"],
       price: 350,
       photo: "assets/forno-stufa-vodka-rigatoni.jpg?v=704e8d27e973",
       alt: "白盤中的伏特加粉紅醬水管麵，麵上撒著起司",
@@ -72,7 +72,7 @@ const albumRestaurants = [
     }, {
       id: "sea-prawn-noodle-soup",
       name: "南洋風味蝦湯麵",
-      categories: ["飯麵"],
+      categories: ["飯麵", "南洋料理", "湯麵"],
       price: 350,
       photo: "assets/forno-stufa-sea-prawn-noodle-soup.jpg?v=824e497c0549",
       alt: "碗裡的南洋風味蝦湯麵，上面有蝦和青菜",
@@ -94,7 +94,7 @@ const albumRestaurants = [
     dishes: [{
       id: "beef-belly-pho",
       name: "牛五花河粉",
-      categories: ["飯麵"],
+      categories: ["飯麵", "越式料理", "河粉"],
       price: 140,
       photo: "assets/yue-lai-yue-pho-beef-belly-pho.jpg?v=e8027fb6d81e",
       alt: "牛五花河粉與分開盛裝的香草和檸檬汁",
@@ -107,7 +107,7 @@ const albumRestaurants = [
     }, {
       id: "crispy-spring-rolls",
       name: "香脆手工炸春捲",
-      categories: ["小吃"],
+      categories: ["小吃", "越式料理", "炸物"],
       price: 80,
       photo: "assets/yue-lai-yue-pho-crispy-spring-rolls.jpg",
       alt: "白盤裡的兩條炸春捲，旁邊附一小碟沾醬",

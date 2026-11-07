@@ -56,3 +56,7 @@
   .preview-print img { max-height:260px; margin-bottom:12px; }
   .action-row > button { flex:1; }
 }
+
+.types .add-category { min-height:38px; padding:5px 12px; font-size:.9rem; }
+.types .category-status { margin-block:5px; }
+.cancel-edit { display:inline-flex; align-items:center; padding:8px 10px; color:var(--accent); text-underline-offset:3px; }

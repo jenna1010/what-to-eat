@@ -103,12 +103,37 @@ async function digest(bytes) {
   return Array.from(hash, n => n.toString(16).padStart(2, "0")).join("");
 }
 
-async function parseVisit(data, categories) {
+function normalizedCategories(values) {
+  check(Array.isArray(values) && values.length > 0 && values.length <= 96, "請填寫餐點類型");
+  const names = new Map();
+  for (const input of values) {
+    check(typeof input === "string" && input.length <= 240, "無效的餐點類型");
+    const name = input.normalize("NFKC").trim().replace(/\s+/gu, " ");
+    check(name && name.length <= 40 && !/[,;、\p{Cc}]/u.test(name), "每個餐點類型需為 1 至 40 字，並分開填寫");
+    const key = name.toLowerCase();
+    if (!names.has(key)) names.set(key, name);
+  }
+  check(names.size <= 12, "每道餐點最多 12 個類型");
+  return [...names.values()];
+}
+
+function validDate(value, allowBlank) {
+  if (allowBlank && (value === null || value === "")) return "";
+  check(typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value), "請選擇造訪日期");
+  const timestamp = Date.parse(value + "T00:00:00Z");
+  check(Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value, "無效的造訪日期");
+  return value;
+}
+
+function validPrice(value) {
+  if (value == null || value === "") return null;
+  check(Number.isFinite(value) && value >= 0 && value <= 1000000, "無效的餐點價格");
+  return value;
+}
+
+async function parseVisit(data) {
   check(typeof data.id === "string" && UUID.test(data.id), "無效的造訪識別碼");
-  check(typeof data.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(data.date), "請選擇造訪日期");
-  const timestamp = Date.parse(data.date + "T00:00:00Z");
-  check(Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === data.date,
-    "無效的造訪日期");
+  validDate(data.date, false);
   check(isObject(data.shop), "缺少店家資料");
   const shop = {
     id: validId(data.shop.id),
@@ -128,16 +153,14 @@ async function parseVisit(data, categories) {
     check(!dishIds.has(id), "同次造訪的餐點不可重複");
     dishIds.add(id);
     const name = stringField(entry.name, 160, "菜名", true);
-    check(Array.isArray(entry.categories) && entry.categories.length && entry.categories.length <= categories.length
-      && entry.categories.every(c => categories.includes(c)), "請選擇有效的餐點類型");
-    const price = entry.price ?? null;
-    check(price === null || (Number.isFinite(price) && price >= 0 && price <= 1000000), "無效的餐點價格");
+    const categories = normalizedCategories(entry.categories);
+    const price = validPrice(entry.price);
     check(entry.reviews == null || isObject(entry.reviews), "無效的心得格式");
     const bytes = jpegBytes(entry.photoData);
     const key = data.id + "-" + dishes.length + ".jpg";
     uploads.push({key, bytes, hash: await digest(bytes)});
     dishes.push({
-      id, name, categories: [...new Set(entry.categories)], price, score: validScore(entry.score ?? null),
+      id, name, categories, price, score: validScore(entry.score ?? null),
       orderer: stringField(entry.orderer, 80, "點餐者"),
       reviews: {me: stringField(entry.reviews?.me, 4000, "我的心得"),
         partner: stringField(entry.reviews?.partner, 4000, "男友心得")},
@@ -149,8 +172,8 @@ async function parseVisit(data, categories) {
   return {shop, dishes, uploads, hash: await digest(new TextEncoder().encode(canonical))};
 }
 
-async function publish(env, data, categories) {
-  const {shop, dishes, uploads, hash} = await parseVisit(data, categories);
+async function publish(env, data) {
+  const {shop, dishes, uploads, hash} = await parseVisit(data);
   const db = env.DB;
   // Reserve the immutable request before any uploads. Readers cannot access pending rows or photos.
   await db.prepare(`INSERT INTO album_visits
@@ -173,23 +196,45 @@ async function publish(env, data, categories) {
   return json(result, 201);
 }
 
-async function getRestaurants(db, seeds) {
-  const [visitRows, editRows] = await db.batch([
-    db.prepare("SELECT visit_date, shop_json, dishes_json FROM album_visits WHERE published = 1 ORDER BY visit_date, rowid"),
-    db.prepare("SELECT record_id, score, score_set, me, partner FROM album_edits")
+async function getAlbum(db, seeds, suggestions) {
+  const [visitRows, editRows, shopRows] = await db.batch([
+    db.prepare("SELECT shop_json, dishes_json FROM album_visits WHERE published = 1 ORDER BY rowid"),
+    db.prepare("SELECT * FROM album_edits"),
+    db.prepare("SELECT * FROM album_shop_edits")
   ]);
   const shops = new Map();
   const changes = new Map(editRows.results.map(row => [row.record_id, row]));
+  const locations = new Map(shopRows.results.map(row => [row.shop_id, row]));
+  const categoryNames = new Map();
+  function canonicalTag(input) {
+    const name = input.normalize("NFKC").trim().replace(/\s+/gu, " ");
+    const key = name.toLowerCase();
+    if (!categoryNames.has(key)) categoryNames.set(key, name);
+    return categoryNames.get(key);
+  }
+  suggestions.forEach(canonicalTag);
   function addDish(shop, entry) {
     let state = shops.get(shop.id);
     if (!state) {
       const {dishes, ...info} = shop;
+      const update = locations.get(shop.id);
+      if (update) {
+        for (const [field, column] of Object.entries(shopColumns)) info[field] = update[column] ?? info[field];
+      }
       state = {info, dishes: new Map()};
       shops.set(shop.id, state);
     }
     const edit = changes.get(entry.visitId);
+    const dishCategories = edit?.categories_json ? JSON.parse(edit.categories_json) : entry.categories;
+    const name = edit?.name ?? entry.name;
     const dish = {
-      ...entry,
+      ...entry, name,
+      categories: [...new Set(dishCategories.map(canonicalTag))],
+      price: edit?.price_set ? edit.price : entry.price,
+      orderer: edit?.orderer ?? entry.orderer,
+      date: edit?.visit_date ?? entry.date,
+      photo: edit?.photo_key ? "/api/photos/" + edit.photo_key : entry.photo,
+      alt: edit?.photo_key || edit?.name ? name + "的實拍照" : entry.alt,
       score: edit?.score_set ? edit.score : entry.score,
       reviews: {me: edit?.me ?? entry.reviews?.me ?? "", partner: edit?.partner ?? entry.reviews?.partner ?? ""}
     };
@@ -202,17 +247,53 @@ async function getRestaurants(db, seeds) {
     const shop = JSON.parse(row.shop_json);
     for (const dish of JSON.parse(row.dishes_json)) addDish(shop, dish);
   }
-  return Array.from(shops.values(), ({info, dishes}) => ({
+  const restaurants = Array.from(shops.values(), ({info, dishes}) => ({
     ...info, dishes: Array.from(dishes.values(), records => {
-      // Stable sorting keeps insertion order for visits on the same day.
+      // Ties are broken by creation order. Date edits can promote or demote a visit.
       records.sort((a, b) => (a.date || "").localeCompare(b.date || "")).reverse();
       const [latest, ...history] = records;
       return {...latest, history};
     })
   }));
+  return {restaurants, categories: [...categoryNames.values()]};
 }
 
-async function patchRecord(db, seeds, recordId, patch) {
+function onlyFields(patch, allowed) {
+  const keys = Object.keys(patch);
+  check(keys.length > 0 && keys.every(key => allowed.includes(key)), "無效的更新欄位");
+}
+
+// Callers supply fixed table/column names and an explicit, validated subset of fields.
+// A single upsert changes only provided columns, including intentional null values.
+function saveFields(db, table, keyColumn, id, fields) {
+  const columns = Object.keys(fields);
+  const sql = "INSERT INTO " + table + " (" + [keyColumn, ...columns].join(", ") + ") VALUES (?, "
+    + columns.map(() => "?").join(", ") + ") ON CONFLICT(" + keyColumn + ") DO UPDATE SET "
+    + columns.map(column => column + " = excluded." + column).join(", ");
+  return db.prepare(sql).bind(id, ...Object.values(fields)).run();
+}
+
+const shopColumns = {name:"name", englishName:"english_name", city:"city", district:"district", address:"address"};
+
+async function patchShop(db, seeds, id, patch) {
+  onlyFields(patch, Object.keys(shopColumns));
+  if (!seeds.some(shop => shop.id === id)) {
+    const shop = await db.prepare("SELECT 1 AS found FROM album_visits WHERE published = 1 AND json_extract(shop_json, '$.id') = ? LIMIT 1")
+      .bind(id).first();
+    check(shop, "找不到這家店", 404);
+  }
+  const fields = {};
+  for (const key of Object.keys(patch)) {
+    const max = {name:160, englishName:160, city:60, district:60, address:400}[key];
+    const label = {name:"店名", englishName:"英文店名", city:"縣市", district:"行政區", address:"地址"}[key];
+    fields[shopColumns[key]] = stringField(patch[key], max, label, ["name", "city", "district"].includes(key));
+  }
+  await saveFields(db, "album_shop_edits", "shop_id", id, fields);
+  return json({saved: true});
+}
+
+async function patchRecord(env, seeds, recordId, patch) {
+  const db = env.DB;
   const seedMatch = seeds.some(shop => shop.dishes.some(dish => dish.visitId === recordId));
   if (!seedMatch) {
     const match = /^([a-f0-9-]{36})-([0-5])$/i.exec(recordId);
@@ -220,39 +301,55 @@ async function patchRecord(db, seeds, recordId, patch) {
       .bind(match[1]).first();
     check(row && JSON.parse(row.dishes_json).some(dish => dish.visitId === recordId), "找不到這筆餐點紀錄", 404);
   }
-  check(Object.keys(patch).length > 0 && Object.keys(patch).every(key => ["reviews", "score"].includes(key)), "無效的更新欄位");
-  const columns = [];
-  const values = [];
+  onlyFields(patch, ["name", "categories", "price", "date", "orderer", "photoData", "reviews", "score"]);
+  const fields = {};
+  if (Object.hasOwn(patch, "name")) fields.name = stringField(patch.name, 160, "菜名", true);
+  if (Object.hasOwn(patch, "categories")) fields.categories_json = JSON.stringify(normalizedCategories(patch.categories));
+  if (Object.hasOwn(patch, "price")) {
+    fields.price = validPrice(patch.price);
+    fields.price_set = 1;
+  }
+  if (Object.hasOwn(patch, "date")) fields.visit_date = validDate(patch.date, true);
+  if (Object.hasOwn(patch, "orderer")) fields.orderer = stringField(patch.orderer, 80, "點餐者");
   if (Object.hasOwn(patch, "score")) {
-    columns.push("score", "score_set");
-    values.push(validScore(patch.score), 1);
+    fields.score = validScore(patch.score);
+    fields.score_set = 1;
   }
   if (Object.hasOwn(patch, "reviews")) {
-    check(isObject(patch.reviews) && Object.keys(patch.reviews).length > 0
-      && Object.keys(patch.reviews).every(key => key === "me" || key === "partner"), "無效的心得欄位");
-    for (const author of ["me", "partner"]) {
-      if (!Object.hasOwn(patch.reviews, author)) continue;
-      columns.push(author);
-      values.push(stringField(patch.reviews[author], 4000, "心得"));
-    }
+    check(isObject(patch.reviews), "無效的心得欄位");
+    onlyFields(patch.reviews, ["me", "partner"]);
+    for (const [author, review] of Object.entries(patch.reviews)) fields[author] = stringField(review, 4000, "心得");
   }
-  // Columns are exclusively the enumerated fields above. Independent edits update only their own columns.
-  const sql = "INSERT INTO album_edits (record_id, " + columns.join(", ") + ") VALUES (?, "
-    + columns.map(() => "?").join(", ") + ") ON CONFLICT(record_id) DO UPDATE SET "
-    + columns.map(column => column + " = excluded." + column).join(", ");
-  await db.prepare(sql).bind(recordId, ...values).run();
+  if (Object.hasOwn(patch, "photoData")) {
+    const bytes = jpegBytes(patch.photoData);
+    fields.photo_key = "edit-" + await digest(bytes) + ".jpg";
+    // Bytes land first. Only current database references can expose this object.
+    await env.BUCKET.put(fields.photo_key, bytes, {httpMetadata: {contentType: "image/jpeg"}});
+  }
+  await saveFields(db, "album_edits", "record_id", recordId, fields);
   return json({saved: true});
 }
 
-async function servePhoto(env, key, method) {
-  const row = await env.DB.prepare(`SELECT p.photo_key FROM album_photos p JOIN album_visits v ON v.id = p.visit_id
-    WHERE p.photo_key = ? AND v.published = 1`).bind(key).first();
+async function servePhoto(env, key, method, seeds) {
+  const replacement = key.startsWith("edit-");
+  const sql = replacement
+    ? `SELECT 1 FROM album_edits e WHERE e.photo_key = ? AND (
+         e.record_id IN (SELECT value FROM json_each(?))
+         OR EXISTS (SELECT 1 FROM album_visits v, json_each(v.dishes_json) d
+           WHERE v.id = substr(e.record_id, 1, 36) AND v.published = 1
+             AND json_extract(d.value, '$.visitId') = e.record_id)) LIMIT 1`
+    : `SELECT p.photo_key FROM album_photos p JOIN album_visits v ON v.id = p.visit_id
+       WHERE p.photo_key = ? AND v.published = 1 AND NOT EXISTS (
+         SELECT 1 FROM album_edits e WHERE e.record_id = substr(p.photo_key, 1, length(p.photo_key) - 4) AND e.photo_key IS NOT NULL)`;
+  const args = [key];
+  if (replacement) args.push(JSON.stringify(seeds.flatMap(shop => shop.dishes.map(dish => dish.visitId))));
+  const row = await env.DB.prepare(sql).bind(...args).first();
   check(row, "找不到照片", 404);
   const photo = method === "HEAD" ? await env.BUCKET.head(key) : await env.BUCKET.get(key);
   check(photo, "找不到照片", 404);
   return new Response(method === "HEAD" ? null : photo.body, {
     headers: {"Content-Type": "image/jpeg", "Content-Length": String(photo.size),
-      "X-Content-Type-Options": "nosniff", "Cache-Control": "public, max-age=31536000, immutable"}
+      "X-Content-Type-Options": "nosniff", "Cache-Control": "public, no-cache, must-revalidate"}
   });
 }
 
@@ -261,22 +358,26 @@ export async function handleApi(request, env, seedRestaurants, categories) {
     const url = new URL(request.url);
     const {pathname} = url;
     if (request.method === "GET" && pathname === "/api/album") {
-      return json({restaurants: await getRestaurants(env.DB, seedRestaurants), categories,
+      return json({...await getAlbum(env.DB, seedRestaurants, categories),
         canEdit: canEdit(request, env), signInUrl: "/signin-with-chatgpt?return_to=%2Fnew-meal.html"});
     }
-    const photo = /^\/api\/photos\/([0-9a-f-]{36}-[0-5]\.jpg)$/i.exec(pathname);
+    const photo = /^\/api\/photos\/((?:[0-9a-f-]{36}-[0-5]|edit-[0-9a-f]{64})\.jpg)$/i.exec(pathname);
     if (photo && (request.method === "GET" || request.method === "HEAD")) {
-      return await servePhoto(env, photo[1], request.method);
+      return await servePhoto(env, photo[1], request.method, seedRestaurants);
     }
     if (request.method === "POST" || request.method === "PATCH") {
       check(canEdit(request, env), "只有相簿主人可以發布或修改紀錄", 403);
       check(request.headers.get("Origin") === url.origin, "請從相簿網站提交修改", 403);
       if (request.method === "POST" && pathname === "/api/visits") {
-        return await publish(env, await readBody(request, 9 * MIB), categories);
+        return await publish(env, await readBody(request, 9 * MIB));
+      }
+      const shop = /^\/api\/shops\/([a-z0-9][a-z0-9-]{0,99})$/.exec(pathname);
+      if (request.method === "PATCH" && shop) {
+        return await patchShop(env.DB, seedRestaurants, shop[1], await readBody(request, 16 * 1024));
       }
       const record = /^\/api\/records\/([a-zA-Z0-9-]{1,150})$/.exec(pathname);
       if (request.method === "PATCH" && record) {
-        return await patchRecord(env.DB, seedRestaurants, record[1], await readBody(request, 64 * 1024));
+        return await patchRecord(env, seedRestaurants, record[1], await readBody(request, 2 * MIB));
       }
     }
     throw new ApiError(404, "找不到這個頁面");

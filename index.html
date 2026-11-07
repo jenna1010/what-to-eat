@@ -70,6 +70,21 @@
           <p class="location"></p>
           <h1 id="restaurant"><span lang="en"></span></h1>
           <p class="address"></p>
+          <details class="shop-editor" hidden>
+            <summary>編輯店家資料</summary>
+            <form>
+              <p>這些資料會套用到同一家店的所有餐點。</p>
+              <label>店名<input name="name" required maxlength="160"></label>
+              <label>英文店名<input name="englishName" maxlength="160"></label>
+              <label>縣市<input name="city" required maxlength="60"></label>
+              <label>行政區<input name="district" required maxlength="60"></label>
+              <label>地址<input name="address" maxlength="400"></label>
+              <div class="shop-editor-actions">
+                <button type="submit">儲存店家資料</button><button type="button" class="cancel-shop">取消</button>
+              </div>
+            </form>
+          </details>
+          <p class="shop-edit-status" role="status"></p>
           <nav class="dish-list" aria-label="這家店的餐點" hidden></nav>
         </header>
         <figure class="instant-print">
@@ -78,7 +93,10 @@
           <p class="visit-meta" hidden></p>
         </figure>
         <section class="notes" aria-labelledby="notes-title">
-          <h2 id="notes-title">我們的餐桌筆記</h2>
+          <div class="notes-head">
+            <h2 id="notes-title">我們的餐桌筆記</h2>
+            <a class="record-edit-link" hidden>編輯這筆紀錄</a>
+          </div>
           <details class="visit-history" hidden>
             <summary>歷次造訪</summary>
             <ul></ul>

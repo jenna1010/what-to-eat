@@ -38,13 +38,17 @@
       </fieldset>
       <div id="dish-list"></div>
       <button type="button" id="add-dish" class="secondary">＋ 加一道餐點</button>
-      <div class="action-row"><button type="submit" class="primary">預覽這一餐 →</button></div>
+      <div class="action-row">
+        <a class="cancel-edit" href="index.html" hidden>取消修改</a>
+        <button type="submit" class="primary" id="preview-button">預覽這一餐 →</button>
+      </div>
     </form>
     <section id="preview" hidden aria-labelledby="page-title">
       <div id="preview-shop"></div>
       <div id="preview-dishes"></div>
       <div class="action-row">
         <button type="button" id="back-edit" class="secondary">回去修改</button>
+        <a class="cancel-edit" href="index.html" hidden>取消修改</a>
         <button type="button" id="publish" class="primary">確認發布</button>
       </div>
     </section>
@@ -55,10 +59,14 @@
       <legend class="dish-heading">餐點</legend>
       <div class="dish-tools"><button type="button" class="remove text-button">移除這道</button></div>
       <label class="old-dish-wrap" hidden>相簿裡的餐點<select class="old-dish"></select></label>
-      <label>菜名<input class="dish-name" required maxlength="100"></label>
-      <fieldset class="field-group types"><legend>餐點類型 <small>可複選</small></legend><div class="pills"></div></fieldset>
+      <label>菜名<input class="dish-name" required maxlength="160"></label>
+      <fieldset class="field-group types"><legend>餐點類型 <small>可複選</small></legend>
+        <div class="pills"></div>
+        <label>自訂分類<input type="text" class="custom-category" placeholder="例如：拉麵"></label>
+        <button type="button" class="add-category secondary">加入分類</button>
+        <p class="category-status hint" role="status"></p></fieldset>
       <div class="grid">
-        <label>價格（元） <small>選填</small><input class="price-field" type="number" inputmode="numeric" min="0" max="999999" step="1"></label>
+        <label>價格（元） <small>選填</small><input class="price-field" type="number" inputmode="decimal" min="0" max="1000000" step="any"></label>
         <label>誰點的 <small>選填</small><select class="orderer"><option value="">未記錄</option><option>我</option><option>男友</option><option>一起點</option></select></label>
       </div>
       <label>餐點實拍照<input class="file" type="file" accept="image/*" required></label>
@@ -67,8 +75,8 @@
       <label>本次餐點評分 <small>選填</small><select class="score"><option value="">未評分</option></select></label>
       <div class="score-picker" aria-label="點選星星，也可以使用上方選單"></div>
       <div class="grid notes-grid">
-        <label>我的心得 <small>選填</small><textarea class="mine" rows="3" maxlength="2000"></textarea></label>
-        <label>男友的心得 <small>選填</small><textarea class="partner" rows="3" maxlength="2000"></textarea></label>
+        <label>我的心得 <small>選填</small><textarea class="mine" rows="3" maxlength="4000"></textarea></label>
+        <label>男友的心得 <small>選填</small><textarea class="partner" rows="3" maxlength="4000"></textarea></label>
       </div>
     </fieldset>
   </template>

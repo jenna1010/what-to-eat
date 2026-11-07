@@ -1,4 +1,4 @@
-function showAlbumHome(albumRestaurants, albumCategories) {
+function showAlbumHome(albumRestaurants, albumCategories, canEdit) {
   const city = document.querySelector("#city-filter");
   const district = document.querySelector("#district-filter");
   const category = document.querySelector("#category-filter");
@@ -38,6 +38,7 @@ function showAlbumHome(albumRestaurants, albumCategories) {
   function dishCard(shop, dish) {
     const item = document.createElement("li");
     const link = document.createElement("a");
+    link.className = "dish-card";
     link.href = detailLink(shop, dish) + "#notes-title";
     link.setAttribute("aria-label", shop.name + "，" + dish.name + "，查看心得");
 
@@ -57,6 +58,12 @@ function showAlbumHome(albumRestaurants, albumCategories) {
     caption.append(byline, name, meta);
     link.append(photo, caption);
     item.append(link);
+    if (canEdit) {
+      const edit = makeText("a", "quick-edit", "編輯");
+      edit.href = "new-meal.html?" + new URLSearchParams({edit: dish.visitId});
+      edit.setAttribute("aria-label", "編輯" + dish.name + "的紀錄");
+      item.append(edit);
+    }
     return item;
   }
 

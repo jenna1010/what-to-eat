@@ -13,6 +13,9 @@ let categories = [];
 let visitId;
 let newShopId;
 let pendingVisit;
+const editId = new URLSearchParams(location.search).get("edit");
+let editing;
+let pendingPatch;
 let signInUrl;
 let publishing = false;
 let lastRejectedPayload = null;
@@ -32,6 +35,47 @@ function selectedShop() {
 
 function sameName(a, b) {
   return a.trim().normalize("NFKC").toLowerCase() === b.trim().normalize("NFKC").toLowerCase();
+}
+
+function normalizeCategory(value) {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ");
+}
+
+function categoryLabel(value) {
+  const normalized = normalizeCategory(value);
+  return categories.find(tag => sameName(tag, normalized)) || normalized;
+}
+
+function addPill(card, value, checked = false) {
+  const pills = card.querySelector(".pills");
+  const tag = categoryLabel(value);
+  let box = [...pills.querySelectorAll("input")].find(input => sameName(input.value, tag));
+  if (!box) {
+    const label = document.createElement("label");
+    box = document.createElement("input");
+    box.type = "checkbox";
+    box.value = tag;
+    label.append(box, tag);
+    pills.append(label);
+  }
+  if (checked) box.checked = true;
+}
+
+function addTypedCategories(card) {
+  const input = card.querySelector(".custom-category");
+  const tags = input.value.split(/[,，、;；]/u).map(normalizeCategory).filter(Boolean);
+  if (tags.some(tag => tag.length > 40)) throw new Error("每個分類最多 40 個字。");
+  const selected = [...card.querySelectorAll(".pills input:checked")].map(box => box.value);
+  if (new Set([...selected, ...tags].map(tag => categoryLabel(tag).toLowerCase())).size > 12) {
+    throw new Error("每道餐點最多可選 12 個分類。");
+  }
+  for (const tag of tags) {
+    const value = categoryLabel(tag);
+    if (!categories.includes(value)) categories.push(value);
+    for (const other of dishList.children) addPill(other, value, other === card);
+  }
+  input.value = "";
+  card.querySelector(".category-status").textContent = tags.length ? "已選取：" + [...new Set(tags.map(categoryLabel))].join("、") : "";
 }
 
 function updateDishChoices(card) {
@@ -58,7 +102,7 @@ function renumberDishes() {
     card.querySelector(".dish-heading").textContent = "餐點 " + (index + 1);
     card.querySelector(".dish-tools").hidden = cards.length === 1;
   });
-  byId("add-dish").hidden = cards.length >= maxDishes;
+  byId("add-dish").hidden = Boolean(editing) || cards.length >= maxDishes;
 }
 
 async function preparePhoto(file) {
@@ -95,7 +139,13 @@ function selectPhoto(card) {
   input.setCustomValidity("");
   message.textContent = "";
   photoTasks.delete(card);
-  if (!file) return;
+  if (!file) {
+    if (editing) {
+      thumb.src = editing.visit.photo;
+      thumb.hidden = false;
+    }
+    return;
+  }
   message.textContent = "準備照片中…";
   const task = preparePhoto(file).then(data => {
     if (input.files[0] === file) {
@@ -149,14 +199,23 @@ function addDish() {
   const card = byId("dish-template").content.firstElementChild.cloneNode(true);
   card.dataset.newId = crypto.randomUUID();
   const pills = card.querySelector(".pills");
-  for (const category of categories) {
-    const label = document.createElement("label");
-    const checkbox = document.createElement("input");
-    checkbox.type = "checkbox";
-    checkbox.value = category;
-    label.append(checkbox, category);
-    pills.append(label);
-  }
+  for (const category of categories) addPill(card, category);
+  const custom = card.querySelector(".custom-category");
+  const commitTags = () => {
+    try {
+      addTypedCategories(card);
+    } catch (error) {
+      card.querySelector(".category-status").textContent = error.message;
+    }
+    custom.focus();
+  };
+  card.querySelector(".add-category").addEventListener("click", commitTags);
+  custom.addEventListener("keydown", event => {
+    if (event.key === "Enter" && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault();
+      commitTags();
+    }
+  });
   const score = card.querySelector(".score");
   for (let half = 1; half <= 10; half++) {
     const value = half / 2;
@@ -178,7 +237,7 @@ function addDish() {
     name.value = dish?.name ?? "";
     name.readOnly = Boolean(dish);
     for (const checkbox of pills.querySelectorAll("input")) {
-      checkbox.checked = Boolean(dish?.categories.includes(checkbox.value));
+      checkbox.checked = Boolean(dish?.categories.some(tag => sameName(categoryLabel(tag), checkbox.value)));
     }
   });
   updateDishChoices(card);
@@ -210,15 +269,17 @@ async function readDish(card, index) {
   const field = selector => card.querySelector(selector);
   const name = field(".dish-name").value.trim();
   if (!name) throw new Error("請填寫第 " + index + " 道的菜名。");
-  const old = selectedShop()?.dishes.find(entry => sameName(entry.name, name));
+  const old = !editing && selectedShop()?.dishes.find(entry => sameName(entry.name, name));
+  if (field(".custom-category").value.trim()) addTypedCategories(card);
   const types = [...card.querySelectorAll(".pills input:checked")].map(box => box.value);
   if (!types.length) throw new Error("請為「" + name + "」選擇至少一種餐點類型。");
+  if (types.length > 12) throw new Error("每道餐點最多可選 12 個分類。");
   const photoData = await photoTasks.get(card);
-  if (!photoData) throw new Error("請確認「" + name + "」的照片能正常讀取。");
+  if (!photoData && (!editing || field(".file").files.length)) throw new Error("請確認「" + name + "」的照片能正常讀取。");
   const price = field(".price-field").value;
   const score = field(".score").value;
   return {
-    id: old?.id || card.dataset.newId, name:old?.name || name, categories:types, price:price === "" ? null : Number(price),
+    id: editing?.dish.id || old?.id || card.dataset.newId, name:old?.name || name, categories:types, price:price === "" ? null : Number(price),
     score:score === "" ? null : Number(score), orderer:field(".orderer").value,
     reviews:{me:field(".mine").value.trim(), partner:field(".partner").value.trim()}, photoData
   };
@@ -235,7 +296,7 @@ function renderPreview(visit) {
     const print = document.createElement("article");
     print.className = "preview-print";
     const photo = new Image();
-    photo.src = dish.photoData;
+    photo.src = dish.photoData || editing.visit.photo;
     photo.alt = dish.name;
     const notes = document.createElement("div");
     if (dish.score !== null) {
@@ -266,7 +327,9 @@ function setStep(showPreview) {
   form.hidden = showPreview;
   preview.hidden = !showPreview;
   const title = byId("page-title");
-  title.textContent = showPreview ? "發布前預覽" : "新增一餐";
+  title.textContent = editing
+    ? (showPreview ? "預覽修改" : "修改餐點紀錄")
+    : (showPreview ? "發布前預覽" : "新增一餐");
   feedback.replaceChildren();
   window.scrollTo(0, 0);
   title.focus({preventScroll:true});
@@ -275,7 +338,10 @@ function setStep(showPreview) {
 function loginLink() {
   const link = textElement("a", "主人登入");
   const url = new URL(signInUrl || "/signin-with-chatgpt?return_to=%2Fnew-meal.html", location.href);
-  if (url.origin === location.origin) link.href = url.href;
+  if (url.origin === location.origin) {
+    url.searchParams.set("return_to", location.pathname + location.search);
+    link.href = url.href;
+  }
   link.target = "_top";
   return link;
 }
@@ -285,6 +351,82 @@ function showAccessMessage(message, allowLogin) {
   access.replaceChildren(textElement("div", message));
   if (allowLogin) access.append(loginLink());
   access.hidden = false;
+}
+
+function recordLink() {
+  const params = new URLSearchParams({shop:editing.shop.id, dish:editing.dish.id, visit:editing.visit.visitId});
+  return "index.html?" + params;
+}
+
+function findEditRecord() {
+  for (const shop of restaurants) {
+    for (const dish of shop.dishes) {
+      const visit = [dish, ...(dish.history || [])].find(record => record.visitId === editId);
+      if (visit) return {shop, dish, visit};
+    }
+  }
+  return null;
+}
+
+function populateEditForm() {
+  const {shop, visit} = editing;
+  shopSelect.value = shop.id;
+  shopSelect.disabled = true;
+  applyShopChoice();
+  const date = byId("visit-date");
+  date.value = visit.date || "";
+  date.required = false;
+  const card = addDish();
+  card.querySelector(".old-dish-wrap").hidden = true;
+  card.querySelector(".dish-heading").textContent = "這道餐點";
+  card.querySelector(".dish-name").value = visit.name;
+  for (const tag of visit.categories || []) addPill(card, tag, true);
+  card.querySelector(".price-field").value = visit.price ?? "";
+  const orderer = card.querySelector(".orderer");
+  if (visit.orderer && ![...orderer.options].some(option => option.value === visit.orderer)) {
+    orderer.add(new Option(visit.orderer));
+  }
+  orderer.value = visit.orderer || "";
+  card.querySelector(".score").value = visit.score ?? "";
+  showStars(card.querySelector(".score-picker"), visit.score);
+  card.querySelector(".mine").value = visit.reviews?.me || "";
+  card.querySelector(".partner").value = visit.reviews?.partner || "";
+  card.querySelector(".file").required = false;
+  card.querySelector(".file-status").textContent = "保留目前照片，或選新照片替換。";
+  const thumb = card.querySelector(".thumbnail");
+  thumb.src = visit.photo;
+  thumb.hidden = false;
+  const title = "修改餐點紀錄";
+  document.title = title + "｜今天吃什麼？";
+  byId("page-title").textContent = title;
+  byId("preview-button").textContent = "預覽修改 →";
+  byId("publish").textContent = "儲存修改";
+  for (const cancel of document.querySelectorAll(".cancel-edit, .return-link")) {
+    cancel.href = recordLink();
+    cancel.hidden = false;
+  }
+  document.querySelector(".return-link").textContent = "回餐點紀錄 ↗";
+}
+
+function changedFields(dish, date) {
+  const before = editing.visit;
+  const patch = {};
+  if (dish.name !== before.name.trim()) patch.name = dish.name;
+  if (dish.price !== (before.price ?? null)) patch.price = dish.price;
+  if (dish.score !== (before.score ?? null)) patch.score = dish.score;
+  if (dish.orderer !== (before.orderer || "")) patch.orderer = dish.orderer;
+  if (date !== (before.date || "")) patch.date = date || null;
+  const savedTags = new Set((before.categories || []).map(tag => categoryLabel(tag).toLowerCase()));
+  if (dish.categories.length !== savedTags.size || dish.categories.some(tag => !savedTags.has(tag.toLowerCase()))) {
+    patch.categories = dish.categories;
+  }
+  const reviews = {};
+  for (const author of ["me", "partner"]) {
+    if (dish.reviews[author] !== (before.reviews?.[author] || "").trim()) reviews[author] = dish.reviews[author];
+  }
+  if (Object.keys(reviews).length) patch.reviews = reviews;
+  if (dish.photoData) patch.photoData = dish.photoData;
+  return patch;
 }
 
 async function init() {
@@ -298,11 +440,25 @@ async function init() {
     const album = await response.json();
     signInUrl = album.signInUrl;
     if (!album.canEdit) {
-      showAccessMessage("只有相簿主人可以新增紀錄。請用主人的帳號登入。", true);
+      showAccessMessage("請用相簿主人的帳號登入，以新增或修改紀錄。", true);
       return;
     }
-    categories = album.categories;
     restaurants = album.restaurants;
+    const suggestions = [...album.categories];
+    for (const shop of restaurants) for (const dish of shop.dishes) {
+      for (const record of [dish, ...(dish.history || [])]) suggestions.push(...(record.categories || []));
+    }
+    for (const tag of suggestions) {
+      const normalized = categoryLabel(tag);
+      if (normalized && !categories.includes(normalized)) categories.push(normalized);
+    }
+    if (editId !== null) {
+      editing = findEditRecord();
+      if (!editing) {
+        showAccessMessage("找不到這筆餐點紀錄，請回相簿重新選擇。");
+        return;
+      }
+    }
     visitId = crypto.randomUUID();
     newShopId = crypto.randomUUID();
     shopSelect.add(new Option("請選擇店家", ""));
@@ -317,7 +473,8 @@ async function init() {
     }
     const today = new Date();
     byId("visit-date").value = [today.getFullYear(), String(today.getMonth()+1).padStart(2,"0"), String(today.getDate()).padStart(2,"0")].join("-");
-    addDish();
+    if (editing) populateEditForm();
+    else addDish();
     byId("access").hidden = true;
     form.hidden = false;
   } catch {
@@ -341,7 +498,11 @@ form.addEventListener("submit", async event => {
       throw new Error("這一餐有重複的菜名，請將同一道菜記在一起。");
     }
     pendingVisit = {id:visitId, date:byId("visit-date").value, shop, dishes};
-    if (lastRejectedPayload && JSON.stringify(pendingVisit) !== lastRejectedPayload) {
+    if (editing) {
+      pendingPatch = changedFields(dishes[0], pendingVisit.date);
+      if (!Object.keys(pendingPatch).length) throw new Error("內容還沒有變更。");
+    }
+    if (!editing && lastRejectedPayload && JSON.stringify(pendingVisit) !== lastRejectedPayload) {
       visitId = crypto.randomUUID();
       pendingVisit.id = visitId;
       lastRejectedPayload = null;
@@ -359,19 +520,21 @@ byId("publish").addEventListener("click", async () => {
   if (publishing || !pendingVisit) return;
   publishing = true;
   byId("back-edit").disabled = byId("publish").disabled = true;
-  feedback.textContent = "正在發布這一餐…";
+  feedback.textContent = editing ? "正在儲存修改…" : "正在發布這一餐…";
   const checkingPreviousAttempt = outcomeUnknown;
   try {
     outcomeUnknown = true;
-    const response = await fetch("/api/visits", {
-      method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify(pendingVisit)
+    const url = editing ? "/api/records/" + encodeURIComponent(editId) : "/api/visits";
+    const response = await fetch(url, {
+      method:editing ? "PATCH" : "POST", headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(editing ? pendingPatch : pendingVisit)
     });
     const result = await response.json().catch(() => ({}));
     if (!response.ok) {
-      const rejected = [400, 409, 413, 415, 422].includes(response.status);
+      const rejected = response.status >= 400 && response.status < 500 && ![401,403,408,429].includes(response.status);
       if (rejected) {
         outcomeUnknown = false;
-        lastRejectedPayload = JSON.stringify(pendingVisit);
+        if (!editing) lastRejectedPayload = JSON.stringify(pendingVisit);
       }
       if (response.status === 401 || response.status === 403) {
         outcomeUnknown = checkingPreviousAttempt;
@@ -384,18 +547,23 @@ byId("publish").addEventListener("click", async () => {
       }
       throw new Error(result.error || "發布失敗，內容已保留在本頁，請再試一次。");
     }
+    if (editing) {
+      if (result.saved !== true) throw new Error("尚未收到儲存確認。");
+      location.replace(recordLink());
+      return;
+    }
     if (!result.shopId || !result.dishId) throw new Error("未收到發布確認。");
     const query = new URLSearchParams({shop:result.shopId, dish:result.dishId});
     location.replace("index.html?" + query);
   } catch (error) {
     if (outcomeUnknown) {
-      feedback.textContent = "還無法確認這一餐是否已發布。內容已保留，可按「重試發布」安全續傳，或先";
+      feedback.textContent = editing ? "還無法確認修改是否已儲存。可以重試，或先" : "還無法確認這一餐是否已發布。內容已保留，可按「重試發布」安全續傳，或先";
       const check = textElement("a", "開相簿查看");
-      check.href = "index.html";
+      check.href = editing ? recordLink() : "index.html";
       check.target = "_blank";
       check.rel = "noopener";
       feedback.append(check, "。");
-      byId("publish").textContent = "重試發布";
+      byId("publish").textContent = editing ? "重試儲存" : "重試發布";
     } else {
       feedback.textContent = error.message;
     }

@@ -2,6 +2,19 @@
   "version": "7",
   "dialect": "sqlite",
   "entries": [
-    { "idx": 0, "version": "6", "when": 1794009600000, "tag": "0000_meal_album", "breakpoints": true }
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1794009600000,
+      "tag": "0000_meal_album",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1794009600001,
+      "tag": "0001_edit_records",
+      "breakpoints": true
+    }
   ]
 }

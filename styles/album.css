@@ -134,3 +134,17 @@ h3 { display: flex; align-items: baseline; gap: 12px; margin: 0 0 5px; color: va
   .masthead .album-subtitle { display: none; }
   .album-actions { gap: 12px; }
 }
+
+.notes-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.notes-head h2 { border: 0; padding: 0; }
+.record-edit-link, .shop-editor summary { color: var(--accent); font-size: .93rem; text-underline-offset: 3px; }
+.shop-editor { margin-block: 10px; }
+.shop-editor summary { cursor: pointer; padding-block: 6px; }
+.shop-editor form { padding: 12px; display: grid; gap: 10px; border: 1px solid var(--line); background: #fffdf7; }
+.shop-editor form p { margin: 0; font-size: .86rem; }
+.shop-editor label { display: grid; gap: 3px; font-size: .9rem; }
+.shop-editor input { width: 100%; min-width: 0; padding: 6px 8px; color: var(--ink); font: inherit; font-size: 1rem; }
+.shop-editor-actions { display: flex; gap: 8px; }
+.shop-editor-actions button { min-height: 42px; padding: 4px 12px; font: inherit; cursor: pointer; }
+.shop-edit-status { font-size: .88rem; }
+.shop-edit-status:empty { display: none; }
